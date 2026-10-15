@@ -1,0 +1,18 @@
+{
+    "name": "CaveGame.Editor",
+    "rootNamespace": "CaveGame.EditorTools",
+    "references": [
+        "CaveGame.Runtime"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

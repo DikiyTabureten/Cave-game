@@ -5,7 +5,7 @@ namespace CaveGame
 {
     /// <summary>
     /// Рисует уложенную часть верёвки. Порядок слоёв:
-    /// обводка → вся верёвка → в каждом перехлёсте тень и верхний участок поверх.
+    /// обводка → участки верёвки (коренная часть и каждый шаг своим цветом) → в каждом перехлёсте тень и верхний участок.
     /// </summary>
     public sealed class KnotRopeView
     {
@@ -16,7 +16,10 @@ namespace CaveGame
         private readonly KnotLayout _layout;
         private readonly KnotVisualSettings _settings;
         private readonly LineRenderer _outline;
-        private readonly LineRenderer _rope;
+        // [0] — коренная часть, [k + 1] — шаг k.
+        private readonly LineRenderer[] _segments;
+        private readonly float[] _segmentStarts;
+        private readonly float[] _segmentEnds;
         private readonly LineRenderer[] _crossingShadows;
         private readonly LineRenderer[] _crossingTops;
         private readonly float[] _upperDistances;
@@ -34,7 +37,20 @@ namespace CaveGame
 
             float width = settings.ropeWidth;
             _outline = LineFactory.Create(root, "Outline", material, width * settings.outlineScale, settings.outlineColor, OutlineOrder);
-            _rope = LineFactory.Create(root, "Rope", material, width, settings.ropeColor, RopeOrder);
+
+            int segmentCount = layout.StepCount + 1;
+            _segments = new LineRenderer[segmentCount];
+            _segmentStarts = new float[segmentCount];
+            _segmentEnds = new float[segmentCount];
+            _segments[0] = LineFactory.Create(root, "StandingPart", material, width,
+                settings.SegmentColor(KnotCrossing.StandingPart), RopeOrder);
+            _segmentEnds[0] = layout.StandingPart.Length;
+            for (int k = 0; k < layout.StepCount; k++)
+            {
+                _segments[k + 1] = LineFactory.Create(root, $"Step{k + 1}", material, width, settings.SegmentColor(k), RopeOrder);
+                _segmentStarts[k + 1] = layout.StepStart(k);
+                _segmentEnds[k + 1] = layout.StepStart(k) + layout.Step(k).Length;
+            }
 
             int count = knot.crossings.Count;
             _crossingShadows = new LineRenderer[count];
@@ -47,9 +63,11 @@ namespace CaveGame
                 int order = CrossingBaseOrder + i * 2;
                 _crossingShadows[i] = LineFactory.Create(root, $"Crossing{i + 1}_Shadow", material,
                     width * settings.shadowScale, settings.shadowColor, order);
-                _crossingTops[i] = LineFactory.Create(root, $"Crossing{i + 1}_Top", material,
-                    width, settings.ropeColor, order + 1);
                 _upperDistances[i] = layout.UpperRopeDistance(knot.crossings[i]);
+                // Верхний участок того же цвета, что и шаг, к которому он относится.
+                int upperStep = layout.FromRopeDistance(_upperDistances[i], out _);
+                _crossingTops[i] = LineFactory.Create(root, $"Crossing{i + 1}_Top", material,
+                    width, settings.SegmentColor(upperStep), order + 1);
                 _movingDistances[i] = layout.ToRopeDistance(knot.crossings[i].stepIndex, knot.crossings[i].distance);
             }
         }
@@ -58,7 +76,10 @@ namespace CaveGame
         public void Render(float drawnDistance)
         {
             SetRange(_outline, 0f, drawnDistance);
-            SetRange(_rope, 0f, drawnDistance);
+            for (int s = 0; s < _segments.Length; s++)
+            {
+                SetRange(_segments[s], _segmentStarts[s], Mathf.Min(_segmentEnds[s], drawnDistance));
+            }
 
             float half = _settings.crossingHalfLength;
             for (int i = 0; i < _upperDistances.Length; i++)

@@ -13,7 +13,7 @@ namespace CaveGame.EditorTools
         public const string AssetPath = "Assets/_Project/Data/Knots/FigureEight.asset";
 
         private const float Spacing = 0.05f;
-        private const float Tolerance = 0.35f;
+        private const float Tolerance = 0.28f;
 
         private static readonly Vector2[] StandingControls =
         {

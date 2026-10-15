@@ -127,7 +127,7 @@ namespace CaveGame
         private void RefreshStepText()
         {
             int index = Mathf.Min(_session.CurrentStepIndex, knot.steps.Count - 1);
-            _hud.ShowStep(index, knot.steps.Count, knot.steps[index].hint);
+            _hud.ShowStep(index, knot.steps.Count, knot.steps[index].hint, visuals.SegmentColor(index));
         }
 
         private Vector2 ScreenToKnot(Vector2 screen)

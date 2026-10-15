@@ -13,7 +13,6 @@ namespace CaveGame
     public sealed class KnotHud
     {
         private static readonly Color TextColor = new Color(0.93f, 0.95f, 0.97f);
-        private static readonly Color MutedColor = new Color(0.6f, 0.68f, 0.78f);
         private static readonly Color ButtonColor = new Color(0.2f, 0.24f, 0.3f);
         private static readonly Color PanelColor = new Color(0.12f, 0.14f, 0.18f);
 
@@ -45,7 +44,7 @@ namespace CaveGame
             _title = CreateText(root, "Title", knot.displayName, 60, FontStyle.Bold, TextColor, TextAnchor.UpperLeft);
             Place(_title.rectTransform, new Vector2(0, 1), new Vector2(60, -40), new Vector2(1200, 80));
 
-            _stepCounter = CreateText(root, "StepCounter", "", 32, FontStyle.Normal, MutedColor, TextAnchor.UpperLeft);
+            _stepCounter = CreateText(root, "StepCounter", "", 32, FontStyle.Bold, TextColor, TextAnchor.UpperLeft);
             Place(_stepCounter.rectTransform, new Vector2(0, 1), new Vector2(60, -120), new Vector2(1200, 50));
 
             _hint = CreateText(root, "Hint", "", 36, FontStyle.Normal, TextColor, TextAnchor.UpperLeft);
@@ -63,9 +62,11 @@ namespace CaveGame
             _completion.SetActive(false);
         }
 
-        public void ShowStep(int index, int count, string hint)
+        /// <param name="stepColor">Цвет шага на верёвке — счётчик окрашивается так же.</param>
+        public void ShowStep(int index, int count, string hint, Color stepColor)
         {
             _stepCounter.text = $"Шаг {index + 1} из {count}";
+            _stepCounter.color = stepColor;
             _hint.text = hint;
         }
 

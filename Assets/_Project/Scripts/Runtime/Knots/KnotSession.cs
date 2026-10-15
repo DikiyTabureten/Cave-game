@@ -24,13 +24,16 @@ namespace CaveGame
         private readonly float _grabRadius;
         private readonly float _maxAdvance;
 
-        public KnotSession(KnotDefinition knot) : this(knot.steps, knot.grabRadius, knot.maxAdvance)
+        /// <param name="toleranceScale">Множитель допуска и радиуса захвата: на тач-экране палец толще курсора.</param>
+        public KnotSession(KnotDefinition knot, float toleranceScale = 1f)
+            : this(knot.steps, knot.grabRadius, knot.maxAdvance, toleranceScale)
         {
         }
 
         /// <param name="grabRadius">Насколько близко к концу верёвки нужно нажать, чтобы его схватить.</param>
         /// <param name="maxAdvance">Окно поиска вдоль пути за одно движение: защищает от перескока.</param>
-        public KnotSession(IReadOnlyList<KnotStep> steps, float grabRadius, float maxAdvance)
+        /// <param name="toleranceScale">Множитель допуска и радиуса захвата: на тач-экране палец толще курсора.</param>
+        public KnotSession(IReadOnlyList<KnotStep> steps, float grabRadius, float maxAdvance, float toleranceScale = 1f)
         {
             if (steps == null || steps.Count == 0)
             {
@@ -42,10 +45,10 @@ namespace CaveGame
             for (int i = 0; i < steps.Count; i++)
             {
                 _paths[i] = new Polyline(steps[i].points);
-                _tolerances[i] = steps[i].tolerance;
+                _tolerances[i] = steps[i].tolerance * toleranceScale;
             }
 
-            _grabRadius = grabRadius;
+            _grabRadius = grabRadius * toleranceScale;
             _maxAdvance = maxAdvance;
         }
 

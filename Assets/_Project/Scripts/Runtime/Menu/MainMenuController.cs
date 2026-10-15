@@ -11,7 +11,7 @@ namespace CaveGame
     public class MainMenuController : MonoBehaviour
     {
         private const float CardWidth = 720f;
-        private const float CardHeight = 130f;
+        private const float CardHeight = 130f; // не меньше UiFactory.MinButtonHeight — под палец
         private const float CardSpacing = 24f;
         private const float ListTop = -360f;
 
@@ -37,6 +37,12 @@ namespace CaveGame
             }
 
             BuildUi(catalog.AvailableKnots);
+        }
+
+        private void Update()
+        {
+            // «Назад» в главном меню — выход из приложения (в редакторе Application.Quit ничего не делает).
+            if (BackButton.WasPressed()) Application.Quit();
         }
 
         private void BuildUi(List<KnotDefinition> knots)

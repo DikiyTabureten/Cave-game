@@ -46,6 +46,8 @@ namespace CaveGame
 
         [Header("Хват")]
         [Min(0.05f)] public float gripDiameter = 0.5f;
+        [Tooltip("Во сколько раз крупнее хват на телефоне — чтобы его было видно из-под пальца")]
+        [Min(1f)] public float mobileGripScale = 1.8f;
         public Color gripColor = new Color(0.3f, 0.85f, 1f);
 
         [Header("Опора")]

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
@@ -22,6 +23,14 @@ namespace CaveGame
         [SerializeField] private float topUiFraction = 0.28f;
         [SerializeField] private KnotVisualSettings visuals = new KnotVisualSettings();
 
+        [Header("Телефон")]
+        [Tooltip("Auto — по платформе; Mobile — проверить мобильный режим в редакторе")]
+        [SerializeField] private PlatformMode platformMode = PlatformMode.Auto;
+        [Tooltip("Во сколько раз шире допуск отклонения и радиус захвата на тач-экране: палец толще курсора")]
+        [Min(1f)]
+        [SerializeField] private float mobileToleranceMultiplier = 1.5f;
+
+        private readonly List<RaycastResult> _uiHits = new List<RaycastResult>();
         private KnotNavigator _navigator;
         private KnotDefinition _knot;
         private KnotSession _session;
@@ -55,15 +64,19 @@ namespace CaveGame
             targetCamera.backgroundColor = visuals.backgroundColor;
             targetCamera.clearFlags = CameraClearFlags.SolidColor;
 
+            bool mobile = PlatformProfile.IsMobile(platformMode);
+
             _input = new InputSystemPointerInput();
             _layout = new KnotLayout(_knot);
-            _session = new KnotSession(_knot);
+            _session = new KnotSession(_knot, mobile ? mobileToleranceMultiplier : 1f);
             _session.StepCompleted += _ => RefreshStepText();
             _session.Completed += OnCompleted;
 
             if (_knot.HasSupport) new KnotSupportView(transform, _knot.support, lineMaterial, visuals);
             _ropeView = new KnotRopeView(transform, _knot, _layout, lineMaterial, visuals);
-            _guideView = new KnotGuideView(transform, lineMaterial, visuals);
+            // На телефоне хват крупнее: палец закрывает маленький кружок, а конец верёвки должно быть видно.
+            float gripDiameter = visuals.gripDiameter * (mobile ? visuals.mobileGripScale : 1f);
+            _guideView = new KnotGuideView(transform, lineMaterial, visuals, gripDiameter);
             _hud = new KnotHud(transform, _knot, visuals, _navigator.HasNext);
             _hud.RestartRequested += Restart;
             _hud.NextRequested += OpenNextKnot;
@@ -73,8 +86,26 @@ namespace CaveGame
             RefreshStepText();
         }
 
+        private void OnEnable()
+        {
+            // Пока вяжут, экран не гаснет: палец может надолго замереть, читая подсказку.
+            Screen.sleepTimeout = SleepTimeout.NeverSleep;
+        }
+
+        private void OnDisable()
+        {
+            Screen.sleepTimeout = SleepTimeout.SystemSetting;
+        }
+
         private void Update()
         {
+            // Системная «Назад» на Android приходит как Escape.
+            if (BackButton.WasPressed())
+            {
+                OpenMenu();
+                return;
+            }
+
             FitCamera();
             HandleInput();
             Render();
@@ -111,7 +142,7 @@ namespace CaveGame
             {
                 case PointerPhase.Pressed:
                     // Нажатие по кнопке интерфейса не должно хватать верёвку.
-                    _ignoreUntilRelease = IsOverUi();
+                    _ignoreUntilRelease = IsOverUi(sample.ScreenPosition);
                     if (!_ignoreUntilRelease) _session.PointerDown(_pointer);
                     break;
                 case PointerPhase.Moved:
@@ -197,9 +228,19 @@ namespace CaveGame
             cameraTransform.position = new Vector3(center.x, center.y + shift, cameraTransform.position.z);
         }
 
-        private static bool IsOverUi()
+        /// <summary>
+        /// Есть ли под точкой экрана кнопка или панель. Проверяем лучом по UI в этой точке:
+        /// IsPointerOverGameObject() смотрит только на мышь и не видит касаний.
+        /// </summary>
+        private bool IsOverUi(Vector2 screenPosition)
         {
-            return EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+            var eventSystem = EventSystem.current;
+            if (eventSystem == null) return false;
+
+            var data = new PointerEventData(eventSystem) { position = screenPosition };
+            _uiHits.Clear();
+            eventSystem.RaycastAll(data, _uiHits);
+            return _uiHits.Count > 0;
         }
     }
 }

@@ -237,6 +237,34 @@ namespace CaveGame.Tests
         }
 
         [Test]
+        public void ToleranceScale_WidensAllowedDeviation()
+        {
+            var steps = new List<KnotStep> { Step(new Vector2(0, 0), new Vector2(3, 0)) };
+
+            // 0.45 от пути: при допуске 0.35 — ошибка, при допуске 0.35 × 1.5 = 0.525 — нет.
+            var desktop = new KnotSession(steps, GrabRadius, MaxAdvance);
+            desktop.PointerDown(Vector2.zero);
+            desktop.PointerMove(new Vector2(0.3f, 0.45f));
+            Assert.IsTrue(desktop.IsDeviating);
+
+            var touch = new KnotSession(steps, GrabRadius, MaxAdvance, toleranceScale: 1.5f);
+            touch.PointerDown(Vector2.zero);
+            touch.PointerMove(new Vector2(0.3f, 0.45f));
+            Assert.IsFalse(touch.IsDeviating);
+            Assert.AreEqual(Tolerance * 1.5f, touch.CurrentTolerance, 1e-5f);
+        }
+
+        [Test]
+        public void ToleranceScale_AlsoWidensGrabRadius()
+        {
+            var steps = new List<KnotStep> { Step(new Vector2(0, 0), new Vector2(3, 0)) };
+
+            // Палец промахивается сильнее курсора: 0.7 от конца не хватает при радиусе 0.5, хватает при 0.75.
+            Assert.IsFalse(new KnotSession(steps, GrabRadius, MaxAdvance).PointerDown(new Vector2(0, 0.7f)));
+            Assert.IsTrue(new KnotSession(steps, GrabRadius, MaxAdvance, toleranceScale: 1.5f).PointerDown(new Vector2(0, 0.7f)));
+        }
+
+        [Test]
         public void FigureEight_CanBeTiedFromStartToFinish()
         {
             var knot = EditorTools.FigureEightRecipe.CreateDefinition();

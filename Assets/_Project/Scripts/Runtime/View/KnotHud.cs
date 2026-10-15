@@ -40,7 +40,8 @@ namespace CaveGame
             Place(_hint.rectTransform, new Vector2(0, 1), new Vector2(Margin, -175), new Vector2(1250, 120));
 
             var menu = CreateButton(root, "MenuButton", "Меню", 34, () => MenuRequested?.Invoke());
-            Place((RectTransform)menu.transform, new Vector2(1, 1), new Vector2(-Margin - 260, -40), new Vector2(260, 84));
+            Place((RectTransform)menu.transform, new Vector2(1, 1), new Vector2(-Margin - 260, -40),
+                new Vector2(260, MinButtonHeight));
 
             _deviation = CreateText(root, "Deviation", "Верни конец к пунктиру", 36, FontStyle.Bold,
                 settings.errorColor, TextAnchor.LowerCenter);
@@ -77,7 +78,7 @@ namespace CaveGame
             // Панель сверху, в зоне интерфейса: завязанный узел под ней остаётся виден целиком.
             // Ширина 1200 оставляет справа место под кнопку «Меню».
             var panel = CreateImage(root, "CompletionScreen", PanelColor);
-            Place(panel.rectTransform, new Vector2(0.5f, 1), new Vector2(-600, -24), new Vector2(1200, 270));
+            Place(panel.rectTransform, new Vector2(0.5f, 1), new Vector2(-600, -24), new Vector2(1200, 310));
 
             var title = CreateText(panel.rectTransform, "Title", "Узел завязан!", 72, FontStyle.Bold,
                 settings.ropeColor, TextAnchor.UpperLeft);
@@ -89,14 +90,16 @@ namespace CaveGame
 
             // Справа столбиком: «Заново», под ней «Следующий узел» или «В меню».
             var again = CreateButton(panel.rectTransform, "AgainButton", "Заново", 34, () => RestartRequested?.Invoke());
-            Place((RectTransform)again.transform, new Vector2(1, 1), new Vector2(-40 - 340, -35), new Vector2(340, 90));
+            Place((RectTransform)again.transform, new Vector2(1, 1), new Vector2(-40 - 340, -30),
+                new Vector2(340, MinButtonHeight));
 
             var forward = hasNextKnot
                 ? CreateButton(panel.rectTransform, "NextButton", "Следующий узел", 34, AccentButton(settings),
                     () => NextRequested?.Invoke())
                 : CreateButton(panel.rectTransform, "MenuButton", "В меню", 34, AccentButton(settings),
                     () => MenuRequested?.Invoke());
-            Place((RectTransform)forward.transform, new Vector2(1, 1), new Vector2(-40 - 340, -145), new Vector2(340, 90));
+            Place((RectTransform)forward.transform, new Vector2(1, 1), new Vector2(-40 - 340, -30 - MinButtonHeight - 15),
+                new Vector2(340, MinButtonHeight));
 
             return panel.gameObject;
         }

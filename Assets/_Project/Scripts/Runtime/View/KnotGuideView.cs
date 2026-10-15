@@ -16,6 +16,7 @@ namespace CaveGame
         private const float PulseAmount = 0.12f;
 
         private readonly KnotVisualSettings _settings;
+        private readonly float _gripDiameter;
         private readonly Material _dashMaterial;
         private readonly LineRenderer _guide;
         private readonly LineRenderer _tether;
@@ -24,7 +25,8 @@ namespace CaveGame
         private readonly List<Vector2> _buffer = new List<Vector2>();
         private Vector3[] _positions = new Vector3[256];
 
-        public KnotGuideView(Transform parent, Material material, KnotVisualSettings settings)
+        /// <param name="gripDiameter">Диаметр хвата: на телефоне крупнее, чем в настройках.</param>
+        public KnotGuideView(Transform parent, Material material, KnotVisualSettings settings, float gripDiameter)
         {
             _settings = settings;
 
@@ -40,7 +42,8 @@ namespace CaveGame
             _tether = LineFactory.Create(root, "Tether", material, settings.guideWidth * 0.6f, settings.errorColor, TetherOrder);
 
             _target = CreateCircle(root, "StepEnd", material, settings.ropeWidth * 1.4f, GuideOrder);
-            _grip = CreateCircle(root, "Grip", material, settings.gripDiameter, GripOrder);
+            _gripDiameter = gripDiameter;
+            _grip = CreateCircle(root, "Grip", material, gripDiameter, GripOrder);
         }
 
         public void Hide()
@@ -73,7 +76,7 @@ namespace CaveGame
             _grip.color = deviating ? _settings.errorColor : _settings.gripColor;
             _grip.transform.localPosition = holding ? pointer : ropeEnd;
             float pulse = holding ? 1f : 1f + Mathf.Sin(Time.time * PulseSpeed) * PulseAmount;
-            _grip.transform.localScale = Vector3.one * (_settings.gripDiameter * pulse);
+            _grip.transform.localScale = Vector3.one * (_gripDiameter * pulse);
 
             // При отклонении — тонкая красная линия от конца верёвки к указателю: видно, куда вернуться.
             _tether.enabled = holding && deviating;

@@ -23,7 +23,13 @@ namespace CaveGame
 
         public static Font Font => _font != null ? _font : _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
 
-        /// <summary>Холст Screen Space Overlay: Scale With Screen Size, 1920×1080, Match = 0.5.</summary>
+        /// <summary>Минимальная высота кнопки в координатах 1920×1080 — под палец.</summary>
+        public const float MinButtonHeight = 120f;
+
+        /// <summary>
+        /// Холст Screen Space Overlay: Scale With Screen Size, 1920×1080, Match = 0.5.
+        /// Возвращает контейнер внутри холста, вписанный в Screen.safeArea, — весь интерфейс кладётся в него.
+        /// </summary>
         public static RectTransform CreateCanvas(Transform parent, string name)
         {
             EnsureEventSystem();
@@ -37,7 +43,11 @@ namespace CaveGame
             scaler.referenceResolution = ReferenceResolution;
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
             scaler.matchWidthOrHeight = MatchWidthOrHeight;
-            return (RectTransform)go.transform;
+
+            // Вырезы камеры и закругления экрана: интерфейс живёт только в безопасной области.
+            var safeArea = new GameObject("SafeArea", typeof(RectTransform), typeof(SafeArea));
+            safeArea.transform.SetParent(go.transform, false);
+            return (RectTransform)safeArea.transform;
         }
 
         public static Text CreateText(Transform parent, string name, string value, int size, FontStyle style,

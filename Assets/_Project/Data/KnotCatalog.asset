@@ -14,4 +14,5 @@ MonoBehaviour:
   m_EditorClassIdentifier: CaveGame.Runtime::CaveGame.KnotCatalog
   knots:
   - {fileID: 11400000, guid: c05649bd105714f4f8a5992fc19235ad, type: 2}
+  - {fileID: 11400000, guid: 93f5b8cb2ebd26143a839d32db951d89, type: 2}
   - {fileID: 11400000, guid: 7ca01126d311d76469e9d97f3ba727b9, type: 2}

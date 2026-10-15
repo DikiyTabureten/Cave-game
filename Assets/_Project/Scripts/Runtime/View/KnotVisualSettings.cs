@@ -48,6 +48,10 @@ namespace CaveGame
         [Min(0.05f)] public float gripDiameter = 0.5f;
         public Color gripColor = new Color(0.3f, 0.85f, 1f);
 
+        [Header("Опора")]
+        public Color supportColor = new Color(0.55f, 0.6f, 0.68f);
+        public Color supportOutlineColor = new Color(0.22f, 0.25f, 0.3f);
+
         [Header("Ошибка и фон")]
         public Color errorColor = new Color(1f, 0.3f, 0.3f);
         public Color backgroundColor = new Color(0.07f, 0.08f, 0.1f);

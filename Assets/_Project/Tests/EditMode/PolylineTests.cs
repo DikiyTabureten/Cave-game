@@ -75,9 +75,46 @@ namespace CaveGame.Tests
         }
 
         [Test]
+        public void FindSelfIntersections_CrossingThroughVertex_CountedOnce()
+        {
+            // Горизонталь с вершинами через каждые 0.05, вертикаль проходит точно через вершину x = -2.10.
+            var points = new List<Vector2>();
+            for (int k = 0; k <= 46; k++) points.Add(new Vector2(-3.5f + 0.05f * k, 0f));
+            points.Add(new Vector2(-1.0f, 1f));
+            points.Add(new Vector2(-2.1f, 1f));
+            points.Add(new Vector2(-2.1f, -1f));
+
+            Assert.AreEqual(1, new Polyline(points).FindSelfIntersections().Count);
+        }
+
+        [Test]
+        public void FindIntersections_ThroughVertex_CountedOnce()
+        {
+            var points = new List<Vector2>();
+            for (int k = 0; k <= 46; k++) points.Add(new Vector2(-3.5f + 0.05f * k, 0f));
+            Assert.AreEqual(1, new Polyline(points).FindIntersections(new Vector2(-2.1f, -1f), new Vector2(-2.1f, 1f)).Count);
+        }
+
+        [Test]
         public void FindSelfIntersections_IgnoresJointsOfAdjacentSegments()
         {
             Assert.AreEqual(0, LShape().FindSelfIntersections().Count);
+        }
+
+        [Test]
+        public void FindIntersections_WithSegment_ReturnsDistancesAlongPath()
+        {
+            // L-образная ломаная пересекает вертикальный отрезок x = 1 один раз, на расстоянии 1.
+            var hits = LShape().FindIntersections(new Vector2(1, -1), new Vector2(1, 1));
+            Assert.AreEqual(1, hits.Count);
+            Assert.AreEqual(1f, hits[0].distance, 1e-4f);
+            AssertVector(new Vector2(1, 0), hits[0].position);
+        }
+
+        [Test]
+        public void FindIntersections_SegmentMissingPath_ReturnsNothing()
+        {
+            Assert.AreEqual(0, LShape().FindIntersections(new Vector2(5, -1), new Vector2(5, 1)).Count);
         }
 
         internal static void AssertVector(Vector2 expected, Vector2 actual, float eps = 1e-4f)

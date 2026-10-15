@@ -26,6 +26,9 @@ namespace CaveGame
     /// </summary>
     public sealed class Polyline
     {
+        // Два пересечения ближе этого вдоль ломаной считаются одним.
+        private const float SameHitDistance = 1e-3f;
+
         private readonly Vector2[] _points;
         private readonly float[] _cumulative;
 
@@ -139,8 +142,29 @@ namespace CaveGame
                     {
                         float first = Mathf.Lerp(_cumulative[i], _cumulative[i + 1], t);
                         float second = Mathf.Lerp(_cumulative[j], _cumulative[j + 1], u);
+                        // Пересечение точно в вершине из-за погрешности float находится в обоих соседних отрезках.
+                        if (result.Exists(r => Mathf.Abs(r.FirstDistance - first) < SameHitDistance &&
+                                               Mathf.Abs(r.SecondDistance - second) < SameHitDistance)) continue;
                         result.Add(new PolylineIntersection(first, second, Vector2.Lerp(_points[i], _points[i + 1], t)));
                     }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>
+        /// Пересечения ломаной с отрезком [a, b]: расстояние вдоль ломаной и точка пересечения, по порядку вдоль ломаной.
+        /// </summary>
+        public List<(float distance, Vector2 position)> FindIntersections(Vector2 a, Vector2 b)
+        {
+            var result = new List<(float distance, Vector2 position)>();
+            for (int i = 0; i < _points.Length - 1; i++)
+            {
+                if (TryIntersect(_points[i], _points[i + 1], a, b, out float t, out _))
+                {
+                    float distance = Mathf.Lerp(_cumulative[i], _cumulative[i + 1], t);
+                    if (result.Count > 0 && distance - result[result.Count - 1].distance < SameHitDistance) continue;
+                    result.Add((distance, Vector2.Lerp(_points[i], _points[i + 1], t)));
                 }
             }
             return result;

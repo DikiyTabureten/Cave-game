@@ -39,6 +39,33 @@ namespace CaveGame.Tests
         }
 
         [Test]
+        public void Support_CrossingsAreFoundAndLayeredWithRopeCrossings()
+        {
+            // Вертикальная перекладина x = 2.5 пересекает шаг 1 дважды: по пути вправо и обратно.
+            // Коренная часть кончается на x = 2 и до неё не достаёт.
+            var support = new KnotSupport { shape = KnotSupportShape.Bar, position = new Vector2(2.5f, 1f), length = 6f, angle = 90f };
+            var layers = new IReadOnlyList<bool>[] { new[] { false, true, true }, new[] { false } };
+
+            var result = KnotBuilder.Build(Standing, Steps, 0.05f, layers, support);
+
+            var step1 = result.Crossings.FindAll(c => c.stepIndex == 0);
+            step1.Sort((a, b) => a.distance.CompareTo(b.distance));
+            Assert.AreEqual(3, step1.Count);
+            Assert.IsTrue(step1[0].IsSupport, "первым шаг 1 встречает перекладину");
+            Assert.IsFalse(step1[0].isOver);
+            Assert.IsTrue(step1[1].IsSupport);
+            Assert.IsTrue(step1[1].isOver);
+            Assert.IsFalse(step1[2].IsSupport, "затем коренную часть");
+        }
+
+        [Test]
+        public void NoSupport_NoSupportCrossings()
+        {
+            var result = KnotBuilder.Build(Standing, Steps, 0.05f);
+            Assert.IsFalse(result.Crossings.Exists(c => c.IsSupport));
+        }
+
+        [Test]
         public void WithoutLayers_UsesAlternation()
         {
             var result = KnotBuilder.Build(Standing, Steps, 0.05f);

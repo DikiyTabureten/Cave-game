@@ -61,9 +61,15 @@ namespace CaveGame
 
         /// <summary>
         /// Где вдоль верёвки лежит верхний участок перехлёста — тот, что рисуется поверх.
+        /// Для пересечения с опорой имеет смысл, только если верёвка проходит над ней.
         /// </summary>
         public float UpperRopeDistance(KnotCrossing crossing)
         {
+            if (crossing.IsSupport && !crossing.isOver)
+            {
+                throw new System.ArgumentException("Верёвка проходит под опорой: верхний участок — сама опора.", nameof(crossing));
+            }
+
             return crossing.isOver
                 ? ToRopeDistance(crossing.stepIndex, crossing.distance)
                 : ToRopeDistance(crossing.otherStepIndex, crossing.otherDistance);

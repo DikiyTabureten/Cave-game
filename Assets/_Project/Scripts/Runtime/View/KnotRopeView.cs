@@ -5,10 +5,13 @@ namespace CaveGame
 {
     /// <summary>
     /// Рисует уложенную часть верёвки. Порядок слоёв:
-    /// обводка → участки верёвки (коренная часть и каждый шаг своим цветом) → в каждом перехлёсте тень и верхний участок.
+    /// обводка → участки верёвки (коренная часть и каждый шаг своим цветом) → опора (если есть) →
+    /// в каждом перехлёсте (и там, где верёвка идёт над опорой) тень и верхний участок.
     /// </summary>
     public sealed class KnotRopeView
     {
+        public const int SupportOrder = 5;
+
         private const int OutlineOrder = 0;
         private const int RopeOrder = 1;
         private const int CrossingBaseOrder = 10;
@@ -24,6 +27,7 @@ namespace CaveGame
         private readonly LineRenderer[] _crossingTops;
         private readonly float[] _upperDistances;
         private readonly float[] _movingDistances;
+        private readonly float[] _halfLengths;
         private readonly List<Vector2> _buffer = new List<Vector2>();
         private Vector3[] _positions = new Vector3[256];
 
@@ -52,23 +56,36 @@ namespace CaveGame
                 _segmentEnds[k + 1] = layout.StepStart(k) + layout.Step(k).Length;
             }
 
-            int count = knot.crossings.Count;
+            // Где верёвка проходит ПОД опорой, рисовать поверх нечего: опора и так лежит выше всей верёвки.
+            var drawable = knot.crossings.FindAll(c => !(c.IsSupport && !c.isOver));
+
+            // Все проходы верёвки через пересечения: по ним укорачиваем верхние участки в тесных местах.
+            var passes = new List<float>();
+            foreach (var crossing in knot.crossings)
+            {
+                passes.Add(layout.ToRopeDistance(crossing.stepIndex, crossing.distance));
+                if (!crossing.IsSupport) passes.Add(layout.ToRopeDistance(crossing.otherStepIndex, crossing.otherDistance));
+            }
+
+            int count = drawable.Count;
             _crossingShadows = new LineRenderer[count];
             _crossingTops = new LineRenderer[count];
             _upperDistances = new float[count];
             _movingDistances = new float[count];
+            _halfLengths = new float[count];
             for (int i = 0; i < count; i++)
             {
                 // У каждого перехлёста своя пара слоёв: тень, над ней верхний участок.
                 int order = CrossingBaseOrder + i * 2;
                 _crossingShadows[i] = LineFactory.Create(root, $"Crossing{i + 1}_Shadow", material,
                     width * settings.shadowScale, settings.shadowColor, order);
-                _upperDistances[i] = layout.UpperRopeDistance(knot.crossings[i]);
+                _upperDistances[i] = layout.UpperRopeDistance(drawable[i]);
                 // Верхний участок того же цвета, что и шаг, к которому он относится.
                 int upperStep = layout.FromRopeDistance(_upperDistances[i], out _);
                 _crossingTops[i] = LineFactory.Create(root, $"Crossing{i + 1}_Top", material,
                     width, settings.SegmentColor(upperStep), order + 1);
-                _movingDistances[i] = layout.ToRopeDistance(knot.crossings[i].stepIndex, knot.crossings[i].distance);
+                _movingDistances[i] = layout.ToRopeDistance(drawable[i].stepIndex, drawable[i].distance);
+                _halfLengths[i] = CrossingBridge.HalfLength(_upperDistances[i], passes, settings.crossingHalfLength, width);
             }
         }
 
@@ -81,9 +98,10 @@ namespace CaveGame
                 SetRange(_segments[s], _segmentStarts[s], Mathf.Min(_segmentEnds[s], drawnDistance));
             }
 
-            float half = _settings.crossingHalfLength;
+            float maxShadowHalf = _settings.ropeWidth * _settings.shadowLengthInWidths * 0.5f;
             for (int i = 0; i < _upperDistances.Length; i++)
             {
+                float half = _halfLengths[i];
                 // Пока ведущийся конец не дошёл до пересечения, перехлёста ещё нет.
                 if (drawnDistance < _movingDistances[i] - half)
                 {
@@ -95,7 +113,7 @@ namespace CaveGame
                 float center = _upperDistances[i];
                 SetRange(_crossingTops[i], center - half, Mathf.Min(center + half, drawnDistance));
                 // Тень только в зоне самого пересечения, иначе она темнит фон вокруг верхнего участка.
-                float shadowHalf = _settings.ropeWidth * _settings.shadowLengthInWidths * 0.5f;
+                float shadowHalf = Mathf.Min(maxShadowHalf, half);
                 SetRange(_crossingShadows[i], center - shadowHalf, Mathf.Min(center + shadowHalf, drawnDistance));
             }
         }

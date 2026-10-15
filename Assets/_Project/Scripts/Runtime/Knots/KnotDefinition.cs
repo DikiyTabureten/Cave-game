@@ -31,22 +31,65 @@ namespace CaveGame
         /// <summary>Значение <see cref="otherStepIndex"/>, когда уложенный участок — коренная часть.</summary>
         public const int StandingPart = -1;
 
+        /// <summary>Значение <see cref="otherStepIndex"/>, когда верёвка пересекает опору, а не саму себя.</summary>
+        public const int Support = -2;
+
         [Tooltip("Шаг, на котором ведущийся конец проходит пересечение")]
         public int stepIndex;
 
         [Tooltip("Расстояние вдоль пути этого шага")]
         public float distance;
 
-        [Tooltip("true — ведущийся конец проходит НАД уложенным участком, false — ПОД ним")]
+        [Tooltip("true — ведущийся конец проходит НАД уложенным участком (или опорой), false — ПОД ним")]
         public bool isOver;
 
-        [Tooltip("Шаг уложенного участка (-1 — коренная часть)")]
+        [Tooltip("Шаг уложенного участка (-1 — коренная часть, -2 — опора)")]
         public int otherStepIndex;
 
-        [Tooltip("Расстояние вдоль пути уложенного участка")]
+        [Tooltip("Расстояние вдоль пути уложенного участка (для опоры не используется)")]
         public float otherDistance;
 
         public Vector2 position;
+
+        public bool IsSupport => otherStepIndex == Support;
+    }
+
+    public enum KnotSupportShape
+    {
+        None,
+        Bar
+    }
+
+    /// <summary>
+    /// Неподвижная опора, к которой крепится узел (например, перекладина). У большинства узлов её нет.
+    /// </summary>
+    [Serializable]
+    public class KnotSupport
+    {
+        public KnotSupportShape shape = KnotSupportShape.None;
+
+        [Tooltip("Центр опоры в локальных координатах узла")]
+        public Vector2 position;
+
+        [Tooltip("Длина перекладины")]
+        [Min(0.1f)]
+        public float length = 4f;
+
+        [Tooltip("Толщина перекладины")]
+        [Min(0.05f)]
+        public float thickness = 0.4f;
+
+        [Tooltip("Направление перекладины в градусах: 0 — горизонтально, 90 — вертикально")]
+        public float angle = 90f;
+
+        /// <summary>Концы осевой линии перекладины.</summary>
+        public void GetSegment(out Vector2 start, out Vector2 end)
+        {
+            float radians = angle * Mathf.Deg2Rad;
+            Vector2 half = new Vector2(Mathf.Cos(radians), Mathf.Sin(radians)) * (length * 0.5f);
+            start = position - half;
+            end = position + half;
+        }
     }
 
     /// <summary>
@@ -66,6 +109,11 @@ namespace CaveGame
         public List<KnotStep> steps = new List<KnotStep>();
 
         public List<KnotCrossing> crossings = new List<KnotCrossing>();
+
+        [Tooltip("Опора, к которой крепится узел. Shape = None — опоры нет.")]
+        public KnotSupport support = new KnotSupport();
+
+        public bool HasSupport => support != null && support.shape != KnotSupportShape.None;
 
         [Header("Управление")]
         [Tooltip("Насколько близко к концу верёвки нужно нажать, чтобы его схватить")]

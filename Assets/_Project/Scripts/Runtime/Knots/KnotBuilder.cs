@@ -26,11 +26,16 @@ namespace CaveGame
         /// Необязательно: для каждого шага — слои его пересечений по порядку вдоль шага
         /// (true — ведущийся конец НАД). Если не задано, слои чередуются автоматически.
         /// </param>
+        /// <param name="support">
+        /// Необязательно: опора узла. Её пересечения с верёвкой входят в слои шагов наравне с перехлёстами,
+        /// поэтому с опорой слои нужно задать явно.
+        /// </param>
         public static Result Build(
             IReadOnlyList<Vector2> standingControls,
             IReadOnlyList<IReadOnlyList<Vector2>> stepControls,
             float spacing,
-            IReadOnlyList<IReadOnlyList<bool>> stepLayers = null)
+            IReadOnlyList<IReadOnlyList<bool>> stepLayers = null,
+            KnotSupport support = null)
         {
             var controls = new List<Vector2>(standingControls);
             var boundaries = new List<int> { standingControls.Count - 1 };
@@ -56,10 +61,50 @@ namespace CaveGame
             }
 
             var layout = new KnotLayout(result.StandingPart, result.Steps.ConvertAll(s => (IReadOnlyList<Vector2>)s));
-            result.Crossings = stepLayers == null
-                ? FindAlternatingCrossings(layout)
-                : ApplyLayers(FindAlternatingCrossings(layout, requireAlternation: false), stepLayers);
+            if (stepLayers == null)
+            {
+                result.Crossings = FindAlternatingCrossings(layout);
+                if (FindSupportCrossings(layout, support).Count > 0)
+                {
+                    throw new InvalidOperationException("Верёвка пересекает опору: слои над/под нужно задать явно.");
+                }
+                return result;
+            }
+
+            var crossings = FindAlternatingCrossings(layout, requireAlternation: false);
+            crossings.AddRange(FindSupportCrossings(layout, support));
+            result.Crossings = ApplyLayers(crossings, stepLayers);
+            result.Crossings.Sort((a, b) => layout.ToRopeDistance(a.stepIndex, a.distance)
+                .CompareTo(layout.ToRopeDistance(b.stepIndex, b.distance)));
             return result;
+        }
+
+        /// <summary>
+        /// Пересечения верёвки с осью опоры. Слой (isOver) задаётся потом, вместе со слоями шагов.
+        /// </summary>
+        public static List<KnotCrossing> FindSupportCrossings(KnotLayout layout, KnotSupport support)
+        {
+            var crossings = new List<KnotCrossing>();
+            if (support == null || support.shape == KnotSupportShape.None) return crossings;
+
+            support.GetSegment(out Vector2 start, out Vector2 end);
+            foreach (var (ropeDistance, position) in layout.Rope.FindIntersections(start, end))
+            {
+                int step = layout.FromRopeDistance(ropeDistance, out float distance);
+                if (step == KnotCrossing.StandingPart)
+                {
+                    throw new InvalidOperationException($"Коренная часть пересекает опору в {position}: её нужно отодвинуть.");
+                }
+
+                crossings.Add(new KnotCrossing
+                {
+                    stepIndex = step,
+                    distance = distance,
+                    otherStepIndex = KnotCrossing.Support,
+                    position = position
+                });
+            }
+            return crossings;
         }
 
         /// <summary>

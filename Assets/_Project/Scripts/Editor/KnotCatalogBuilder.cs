@@ -1,11 +1,12 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
 namespace CaveGame.EditorTools
 {
     /// <summary>
-    /// Создаёт каталог узлов Data/KnotCatalog.asset. Порядок в каталоге: Восьмёрка, Штык, Булинь.
-    /// Штыка пока нет — когда он появится, его ставят между Восьмёркой и Булинем.
+    /// Создаёт каталог узлов Data/KnotCatalog.asset. Порядок: Восьмёрка, Штык, Булинь —
+    /// дальше узлы, добавленные в каталог вручную, в своём порядке.
     /// </summary>
     public static class KnotCatalogBuilder
     {
@@ -14,10 +15,12 @@ namespace CaveGame.EditorTools
         [MenuItem("Tools/Cave Game/Create Knot Catalog")]
         public static KnotCatalog CreateOrUpdate()
         {
-            var figureEight = AssetDatabase.LoadAssetAtPath<KnotDefinition>(FigureEightRecipe.AssetPath);
-            if (figureEight == null) figureEight = FigureEightRecipe.CreateOrUpdateAsset();
-            var bowline = AssetDatabase.LoadAssetAtPath<KnotDefinition>(BowlineRecipe.AssetPath);
-            if (bowline == null) bowline = BowlineRecipe.CreateOrUpdateAsset();
+            var ordered = new List<KnotDefinition>
+            {
+                LoadOrCreate(FigureEightRecipe.AssetPath, FigureEightRecipe.CreateOrUpdateAsset),
+                LoadOrCreate(TwoHalfHitchesRecipe.AssetPath, TwoHalfHitchesRecipe.CreateOrUpdateAsset),
+                LoadOrCreate(BowlineRecipe.AssetPath, BowlineRecipe.CreateOrUpdateAsset)
+            };
 
             var catalog = AssetDatabase.LoadAssetAtPath<KnotCatalog>(AssetPath);
             if (catalog == null)
@@ -26,14 +29,22 @@ namespace CaveGame.EditorTools
                 AssetDatabase.CreateAsset(catalog, AssetPath);
             }
 
-            // Существующий порядок не трогаем: Восьмёрка всегда первая, Булинь — в конце, если его ещё нет.
-            catalog.knots.Remove(figureEight);
-            catalog.knots.Insert(0, figureEight);
-            if (!catalog.knots.Contains(bowline)) catalog.knots.Add(bowline);
+            // Свои узлы — в начале в заданном порядке, добавленные вручную — следом, как были.
+            foreach (var knot in catalog.knots)
+            {
+                if (knot != null && !ordered.Contains(knot)) ordered.Add(knot);
+            }
+            catalog.knots = ordered;
 
             EditorUtility.SetDirty(catalog);
             AssetDatabase.SaveAssets();
             return catalog;
+        }
+
+        private static KnotDefinition LoadOrCreate(string path, System.Func<KnotDefinition> create)
+        {
+            var knot = AssetDatabase.LoadAssetAtPath<KnotDefinition>(path);
+            return knot != null ? knot : create();
         }
     }
 }

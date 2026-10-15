@@ -61,6 +61,7 @@ namespace CaveGame
             _session.StepCompleted += _ => RefreshStepText();
             _session.Completed += OnCompleted;
 
+            if (_knot.HasSupport) new KnotSupportView(transform, _knot.support, lineMaterial, visuals);
             _ropeView = new KnotRopeView(transform, _knot, _layout, lineMaterial, visuals);
             _guideView = new KnotGuideView(transform, lineMaterial, visuals);
             _hud = new KnotHud(transform, _knot, visuals, _navigator.HasNext);
@@ -172,6 +173,15 @@ namespace CaveGame
             {
                 min = Vector2.Min(min, rope[i]);
                 max = Vector2.Max(max, rope[i]);
+            }
+
+            // Опора тоже должна целиком попадать в кадр.
+            if (_knot.HasSupport)
+            {
+                _knot.support.GetSegment(out Vector2 start, out Vector2 end);
+                Vector2 half = Vector2.one * (_knot.support.thickness * 0.5f);
+                min = Vector2.Min(min, Vector2.Min(start, end) - half);
+                max = Vector2.Max(max, Vector2.Max(start, end) + half);
             }
 
             Vector2 size = max - min + Vector2.one * (cameraPadding * 2f);

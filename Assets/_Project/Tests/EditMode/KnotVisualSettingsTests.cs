@@ -33,6 +33,20 @@ namespace CaveGame.Tests
         }
 
         [Test]
+        public void DefaultPalette_GivesEveryBowlineStepItsOwnColor()
+        {
+            // У булиня 5 шагов: ни один шаг не должен совпасть по цвету с другим.
+            var settings = new KnotVisualSettings();
+            for (int a = 0; a < 5; a++)
+            {
+                for (int b = a + 1; b < 5; b++)
+                {
+                    Assert.AreNotEqual(settings.SegmentColor(a), settings.SegmentColor(b), $"шаги {a + 1} и {b + 1}");
+                }
+            }
+        }
+
+        [Test]
         public void SegmentColor_PaletteRepeatsWhenStepsRunOut()
         {
             var settings = new KnotVisualSettings

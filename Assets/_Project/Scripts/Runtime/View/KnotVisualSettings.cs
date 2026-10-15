@@ -22,7 +22,8 @@ namespace CaveGame
             new Color(1f, 0.65f, 0.2f),   // оранжевый
             new Color(0.4f, 0.85f, 0.5f), // зелёный
             new Color(0.72f, 0.55f, 1f),  // фиолетовый
-            new Color(1f, 0.55f, 0.78f)   // розовый
+            new Color(1f, 0.55f, 0.78f),  // розовый
+            new Color(0.95f, 0.9f, 0.35f) // жёлтый
         };
         [Tooltip("Тёмная обводка вокруг всей верёвки")]
         public Color outlineColor = new Color(0.12f, 0.08f, 0.04f);

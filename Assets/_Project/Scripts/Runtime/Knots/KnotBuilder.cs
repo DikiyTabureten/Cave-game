@@ -6,7 +6,9 @@ namespace CaveGame
 {
     /// <summary>
     /// Строит путь узла по контрольным точкам: один сплайн Catmull-Rom на всю верёвку,
-    /// разрезанный на коренную часть и шаги, плюс перехлёсты с чередованием над/под.
+    /// разрезанный на коренную часть и шаги, плюс перехлёсты. Слои над/под — либо строгое чередование
+    /// вдоль верёвки, либо явно заданные для каждого шага (у некоторых узлов, например булиня,
+    /// конец проходит над двумя участками подряд).
     /// </summary>
     public static class KnotBuilder
     {
@@ -20,10 +22,15 @@ namespace CaveGame
         /// <param name="standingControls">Контрольные точки коренной части.</param>
         /// <param name="stepControls">Контрольные точки каждого шага без начальной (она равна концу предыдущего участка).</param>
         /// <param name="spacing">Максимальное расстояние между точками итогового пути.</param>
+        /// <param name="stepLayers">
+        /// Необязательно: для каждого шага — слои его пересечений по порядку вдоль шага
+        /// (true — ведущийся конец НАД). Если не задано, слои чередуются автоматически.
+        /// </param>
         public static Result Build(
             IReadOnlyList<Vector2> standingControls,
             IReadOnlyList<IReadOnlyList<Vector2>> stepControls,
-            float spacing)
+            float spacing,
+            IReadOnlyList<IReadOnlyList<bool>> stepLayers = null)
         {
             var controls = new List<Vector2>(standingControls);
             var boundaries = new List<int> { standingControls.Count - 1 };
@@ -49,14 +56,56 @@ namespace CaveGame
             }
 
             var layout = new KnotLayout(result.StandingPart, result.Steps.ConvertAll(s => (IReadOnlyList<Vector2>)s));
-            result.Crossings = FindAlternatingCrossings(layout);
+            result.Crossings = stepLayers == null
+                ? FindAlternatingCrossings(layout)
+                : ApplyLayers(FindAlternatingCrossings(layout, requireAlternation: false), stepLayers);
             return result;
+        }
+
+        /// <summary>
+        /// Переписывает слои пересечений по явному списку: для шага k — по порядку вдоль шага.
+        /// </summary>
+        public static List<KnotCrossing> ApplyLayers(List<KnotCrossing> crossings, IReadOnlyList<IReadOnlyList<bool>> stepLayers)
+        {
+            for (int step = 0; step < stepLayers.Count; step++)
+            {
+                var indices = new List<int>();
+                for (int i = 0; i < crossings.Count; i++)
+                {
+                    if (crossings[i].stepIndex == step) indices.Add(i);
+                }
+                indices.Sort((a, b) => crossings[a].distance.CompareTo(crossings[b].distance));
+
+                if (indices.Count != stepLayers[step].Count)
+                {
+                    throw new InvalidOperationException(
+                        $"Шаг {step + 1}: в геометрии {indices.Count} пересечений, а слоёв задано {stepLayers[step].Count}.");
+                }
+
+                for (int k = 0; k < indices.Count; k++)
+                {
+                    var crossing = crossings[indices[k]];
+                    crossing.isOver = stepLayers[step][k];
+                    crossings[indices[k]] = crossing;
+                }
+            }
+
+            foreach (var crossing in crossings)
+            {
+                if (crossing.stepIndex >= stepLayers.Count)
+                {
+                    throw new InvalidOperationException($"Шаг {crossing.stepIndex + 1}: пересечение есть, а слои не заданы.");
+                }
+            }
+
+            return crossings;
         }
 
         /// <summary>
         /// Находит перехлёсты и раздаёт слои так, чтобы вдоль верёвки проходы чередовались: над, под, над…
         /// </summary>
-        public static List<KnotCrossing> FindAlternatingCrossings(KnotLayout layout)
+        /// <param name="requireAlternation">Бросать исключение, если строгое чередование невозможно.</param>
+        public static List<KnotCrossing> FindAlternatingCrossings(KnotLayout layout, bool requireAlternation = true)
         {
             var intersections = layout.Rope.FindSelfIntersections();
 
@@ -81,7 +130,7 @@ namespace CaveGame
             var crossings = new List<KnotCrossing>(intersections.Count);
             for (int i = 0; i < intersections.Count; i++)
             {
-                if (firstPassOver[i] == secondPassOver[i])
+                if (requireAlternation && firstPassOver[i] == secondPassOver[i])
                 {
                     throw new InvalidOperationException(
                         $"Пересечение в {intersections[i].Position} не удаётся сделать чередующимся над/под.");

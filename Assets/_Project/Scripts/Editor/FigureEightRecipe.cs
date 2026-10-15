@@ -77,24 +77,7 @@ namespace CaveGame.EditorTools
         [MenuItem("Tools/Cave Game/Create Figure Eight")]
         public static KnotDefinition CreateOrUpdateAsset()
         {
-            var fresh = CreateDefinition();
-            var existing = AssetDatabase.LoadAssetAtPath<KnotDefinition>(AssetPath);
-            if (existing != null)
-            {
-                // Обновляем на месте, чтобы не потерять GUID и ссылки из сцены.
-                EditorUtility.CopySerialized(fresh, existing);
-                existing.name = "FigureEight";
-                Object.DestroyImmediate(fresh);
-                EditorUtility.SetDirty(existing);
-                AssetDatabase.SaveAssets();
-                Debug.Log($"Узел обновлён: {AssetPath}");
-                return existing;
-            }
-
-            AssetDatabase.CreateAsset(fresh, AssetPath);
-            AssetDatabase.SaveAssets();
-            Debug.Log($"Узел создан: {AssetPath}");
-            return fresh;
+            return KnotAssetUtility.SaveOrUpdate(CreateDefinition(), AssetPath);
         }
     }
 }

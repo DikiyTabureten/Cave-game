@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 
 namespace CaveGame
 {
@@ -9,7 +10,8 @@ namespace CaveGame
     /// </summary>
     public class KnotPrototypeController : MonoBehaviour
     {
-        [SerializeField] private KnotDefinition knot;
+        [Tooltip("Каталог узлов: откуда берётся выбранный узел и следующий за ним")]
+        [SerializeField] private KnotCatalog catalog;
         [Tooltip("Неосвещаемый спрайтовый материал для линий и кружков")]
         [SerializeField] private Material lineMaterial;
         [SerializeField] private Camera targetCamera;
@@ -20,6 +22,8 @@ namespace CaveGame
         [SerializeField] private float topUiFraction = 0.28f;
         [SerializeField] private KnotVisualSettings visuals = new KnotVisualSettings();
 
+        private KnotNavigator _navigator;
+        private KnotDefinition _knot;
         private KnotSession _session;
         private KnotLayout _layout;
         private KnotRopeView _ropeView;
@@ -34,28 +38,35 @@ namespace CaveGame
 
         private void Awake()
         {
-            if (knot == null || lineMaterial == null)
+            if (catalog == null || catalog.AvailableKnots.Count == 0 || lineMaterial == null)
             {
-                Debug.LogError("KnotPrototypeController: не назначены узел или материал. " +
-                               "Пересоберите сцену через Tools/Cave Game/Create Knot Prototype Scene.", this);
+                Debug.LogError("KnotPrototypeController: не назначены каталог узлов или материал. " +
+                               "Пересоберите сцены через Tools/Cave Game/Build All Scenes.", this);
                 enabled = false;
                 return;
             }
+
+            // Узел выбирают в меню. Если сцену открыли напрямую, начинаем с первого узла каталога.
+            if (KnotSelection.Navigator == null) KnotSelection.Select(catalog.AvailableKnots, 0);
+            _navigator = KnotSelection.Navigator;
+            _knot = _navigator.Current;
 
             if (targetCamera == null) targetCamera = Camera.main;
             targetCamera.backgroundColor = visuals.backgroundColor;
             targetCamera.clearFlags = CameraClearFlags.SolidColor;
 
             _input = new InputSystemPointerInput();
-            _layout = new KnotLayout(knot);
-            _session = new KnotSession(knot);
+            _layout = new KnotLayout(_knot);
+            _session = new KnotSession(_knot);
             _session.StepCompleted += _ => RefreshStepText();
             _session.Completed += OnCompleted;
 
-            _ropeView = new KnotRopeView(transform, knot, _layout, lineMaterial, visuals);
+            _ropeView = new KnotRopeView(transform, _knot, _layout, lineMaterial, visuals);
             _guideView = new KnotGuideView(transform, lineMaterial, visuals);
-            _hud = new KnotHud(transform, knot, visuals);
+            _hud = new KnotHud(transform, _knot, visuals, _navigator.HasNext);
             _hud.RestartRequested += Restart;
+            _hud.NextRequested += OpenNextKnot;
+            _hud.MenuRequested += OpenMenu;
 
             _pointer = _session.EndPosition;
             RefreshStepText();
@@ -74,6 +85,18 @@ namespace CaveGame
             _ignoreUntilRelease = true;
             _hud.ShowCompletion(false);
             RefreshStepText();
+        }
+
+        public void OpenNextKnot()
+        {
+            if (!_navigator.MoveNext()) return;
+            // Сцена пересобирается заново уже со следующим узлом из KnotSelection.
+            SceneManager.LoadScene(SceneNames.KnotPrototype);
+        }
+
+        public void OpenMenu()
+        {
+            SceneManager.LoadScene(SceneNames.MainMenu);
         }
 
         private void HandleInput()
@@ -126,8 +149,8 @@ namespace CaveGame
 
         private void RefreshStepText()
         {
-            int index = Mathf.Min(_session.CurrentStepIndex, knot.steps.Count - 1);
-            _hud.ShowStep(index, knot.steps.Count, knot.steps[index].hint, visuals.SegmentColor(index));
+            int index = Mathf.Min(_session.CurrentStepIndex, _knot.steps.Count - 1);
+            _hud.ShowStep(index, _knot.steps.Count, _knot.steps[index].hint, visuals.SegmentColor(index));
         }
 
         private Vector2 ScreenToKnot(Vector2 screen)

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using CaveGame.EditorTools;
 using NUnit.Framework;
@@ -7,12 +8,16 @@ namespace CaveGame.Tests
 {
     public class TwoHalfHitchesTests
     {
+        private const int TurnStep = 0;
+        private static readonly int[] HitchSteps = { 1, 2, 3 };
+        private const int TailStep = 4;
+
         private KnotDefinition _knot;
 
         [SetUp]
         public void SetUp()
         {
-            _knot = TwoHalfHitchesRecipe.CreateDefinition();
+            _knot = TwoHalfHitchesRecipe.CreateDefinition(TwoHalfHitchesRecipe.DefaultTailLength);
         }
 
         [TearDown]
@@ -22,15 +27,20 @@ namespace CaveGame.Tests
         }
 
         [Test]
-        public void HasFourStepsWithRussianHints()
+        public void HasFiveStepsWithRussianHints()
         {
             Assert.AreEqual("Штык", _knot.displayName);
-            Assert.AreEqual(4, _knot.steps.Count);
+            Assert.AreEqual(5, _knot.steps.Count);
             foreach (var step in _knot.steps)
             {
                 Assert.IsFalse(string.IsNullOrWhiteSpace(step.hint));
                 Assert.Greater(step.points.Count, 10);
             }
+
+            StringAssert.StartsWith("Первый полуштык", _knot.steps[1].hint);
+            StringAssert.StartsWith("Второй полуштык", _knot.steps[2].hint);
+            StringAssert.StartsWith("Третий полуштык", _knot.steps[3].hint);
+            StringAssert.StartsWith("Затяни", _knot.steps[TailStep].hint);
         }
 
         [Test]
@@ -72,7 +82,7 @@ namespace CaveGame.Tests
         [Test]
         public void TurnAroundBar_GoesUnderThenOver()
         {
-            var crossings = StepCrossings(0);
+            var crossings = StepCrossings(TurnStep);
             Assert.AreEqual(2, crossings.Length);
             Assert.IsTrue(crossings.All(c => c.IsSupport), "оборот пересекает только опору");
             Assert.IsFalse(crossings[0].isOver);
@@ -81,6 +91,7 @@ namespace CaveGame.Tests
 
         [TestCase(1)]
         [TestCase(2)]
+        [TestCase(3)]
         public void HalfHitch_OverStanding_UnderStanding_OverOwnStrand(int step)
         {
             var crossings = StepCrossings(step);
@@ -93,31 +104,100 @@ namespace CaveGame.Tests
         }
 
         [Test]
-        public void BothHalfHitchesTurnTheSameWay()
+        public void AllHalfHitchesTurnTheSameWay()
         {
-            // Оборот вокруг коренной: конец поднимается НАД ней с одной стороны и опускается ПОД ней с другой.
-            // В ту же сторону — значит, у обоих полуштыков «над» лежит с одной и той же стороны от «под».
-            float Side(int step)
+            // Над коренной конец поднимается с одной стороны, под ней опускается с другой —
+            // у всех полуштыков «над» лежит с той же стороны от «под».
+            var sides = HitchSteps.Select(step =>
             {
                 var c = StepCrossings(step);
                 return Mathf.Sign(c[1].position.x - c[0].position.x);
+            }).Distinct().ToArray();
+
+            Assert.AreEqual(1, sides.Length);
+        }
+
+        [Test]
+        public void HalfHitchesAreEvenlySpacedAwayFromSupport()
+        {
+            // Каждый следующий полуштык дальше от опоры, и расстояние между соседними одинаковое.
+            float[] x = HitchSteps.Select(step => StepCrossings(step)[0].position.x).ToArray();
+            float support = _knot.support.position.x;
+            for (int i = 1; i < x.Length; i++)
+            {
+                Assert.Greater(Mathf.Abs(x[i] - support), Mathf.Abs(x[i - 1] - support));
             }
-
-            Assert.AreEqual(Side(1), Side(2));
+            Assert.AreEqual(x[0] - x[1], x[1] - x[2], 0.05f);
         }
 
         [Test]
-        public void SecondHalfHitchIsFurtherFromSupport()
+        public void HalfHitchesHaveTheSameShape()
         {
-            float first = StepCrossings(1)[0].position.x;
-            float second = StepCrossings(2)[0].position.x;
-            Assert.Greater(Mathf.Abs(second - _knot.support.position.x), Mathf.Abs(first - _knot.support.position.x));
+            // Одинаковая форма: длина пути и ширина обноса совпадают у всех трёх.
+            var lengths = HitchSteps.Select(step => new Polyline(_knot.steps[step].points).Length).ToArray();
+            var widths = HitchSteps.Select(step =>
+            {
+                var c = StepCrossings(step);
+                return Mathf.Abs(c[1].position.x - c[0].position.x);
+            }).ToArray();
+
+            // Первый полуштык начинается от оборота, остальные — от предыдущего: заход у них разный,
+            // поэтому сравниваем второй и третий по длине, а ширину обноса — у всех.
+            Assert.AreEqual(lengths[1], lengths[2], 0.05f);
+            Assert.AreEqual(widths[0], widths[1], 0.02f);
+            Assert.AreEqual(widths[1], widths[2], 0.02f);
         }
 
         [Test]
-        public void LastStep_HasNoCrossings()
+        public void Tail_IsAtLeastTwiceTheOldOneAndNotShorterThanHalfHitch()
         {
-            Assert.IsEmpty(StepCrossings(3));
+            float tail = new Polyline(_knot.steps[TailStep].points).Length;
+            const float oldTail = 0.8f;
+            var hitch = StepCrossings(HitchSteps[0]);
+            float hitchWidth = Mathf.Abs(hitch[1].position.x - hitch[0].position.x);
+
+            Assert.GreaterOrEqual(tail, oldTail * 2f);
+            Assert.GreaterOrEqual(tail, hitchWidth);
+        }
+
+        [Test]
+        public void TailLength_IsControlledByParameter()
+        {
+            var longer = TwoHalfHitchesRecipe.CreateDefinition(TwoHalfHitchesRecipe.DefaultTailLength + 1f);
+            try
+            {
+                float baseTail = new Polyline(_knot.steps[TailStep].points).Length;
+                float longTail = new Polyline(longer.steps[TailStep].points).Length;
+                Assert.AreEqual(baseTail + 1f, longTail, 0.05f);
+            }
+            finally
+            {
+                Object.DestroyImmediate(longer);
+            }
+        }
+
+        [Test]
+        public void Tail_LiesAlongStandingPartAwayFromSupport()
+        {
+            var tail = _knot.steps[TailStep].points;
+            Vector2 direction = tail.Last() - tail[0];
+            Vector2 standingAway = _knot.standingPart[0] - _knot.standingPart.Last();
+            Assert.Greater(Vector2.Dot(direction.normalized, standingAway.normalized), 0.9f, "хвост уходит от опоры вдоль коренной");
+            Assert.IsEmpty(StepCrossings(TailStep), "хвост ничего не пересекает");
+        }
+
+        [Test]
+        public void Tail_DoesNotOverlapHalfHitches()
+        {
+            // Кроме самого начала (оно общее с третьим полуштыком), хвост держится в стороне от полуштыков.
+            var tail = new Polyline(_knot.steps[TailStep].points);
+            var hitchPoints = HitchSteps.SelectMany(step => _knot.steps[step].points).ToList();
+            for (float d = 0.6f; d <= tail.Length; d += 0.1f)
+            {
+                Vector2 p = tail.PointAt(d);
+                float nearest = hitchPoints.Min(h => Vector2.Distance(h, p));
+                Assert.Greater(nearest, 0.3f, $"хвост в {p} слишком близко к полуштыку");
+            }
         }
 
         [Test]

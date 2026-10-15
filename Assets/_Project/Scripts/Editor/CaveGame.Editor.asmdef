@@ -2,7 +2,8 @@
     "name": "CaveGame.Editor",
     "rootNamespace": "CaveGame.EditorTools",
     "references": [
-        "CaveGame.Runtime"
+        "CaveGame.Runtime",
+        "Unity.RenderPipelines.Universal.Runtime"
     ],
     "includePlatforms": [
         "Editor"

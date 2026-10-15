@@ -87,6 +87,21 @@ namespace CaveGame.Tests
         }
 
         [Test]
+        public void UpperRopeDistance_PointsToStrandOnTop()
+        {
+            var layout = new KnotLayout(_knot);
+            foreach (var c in _knot.crossings)
+            {
+                float upper = layout.UpperRopeDistance(c);
+                float expected = c.isOver
+                    ? layout.ToRopeDistance(c.stepIndex, c.distance)
+                    : layout.ToRopeDistance(c.otherStepIndex, c.otherDistance);
+                Assert.AreEqual(expected, upper, 1e-4f);
+                PolylineTests.AssertVector(c.position, layout.Rope.PointAt(upper), 0.01f);
+            }
+        }
+
+        [Test]
         public void SecondStepPassesUnderStandingPart()
         {
             var crossing = _knot.crossings.Single(c => c.stepIndex == 1);

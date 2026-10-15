@@ -60,6 +60,16 @@ namespace CaveGame
         }
 
         /// <summary>
+        /// Где вдоль верёвки лежит верхний участок перехлёста — тот, что рисуется поверх.
+        /// </summary>
+        public float UpperRopeDistance(KnotCrossing crossing)
+        {
+            return crossing.isOver
+                ? ToRopeDistance(crossing.stepIndex, crossing.distance)
+                : ToRopeDistance(crossing.otherStepIndex, crossing.otherDistance);
+        }
+
+        /// <summary>
         /// Обратное преобразование. Для коренной части возвращает <see cref="KnotCrossing.StandingPart"/>.
         /// </summary>
         public int FromRopeDistance(float ropeDistance, out float localDistance)

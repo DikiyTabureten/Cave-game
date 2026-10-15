@@ -14,6 +14,8 @@
 /[Uu]ser[Ss]ettings/
 /[Mm]emoryCaptures/
 /[Rr]ecordings/
+# Кэш нативной сборки Android (IL2CPP)
+/.utmp/
 
 # Папки сборок, если вы кладёте их в другое место
 /[Bb]uild*/
